@@ -21,7 +21,7 @@ VotingClassifier 앙상블 모델의 최종 결과:
 - **클래스 1 (암) F1-score**: 0.4688
 - 클래스 불균형 상황에서의 성능 평가
 
-![F1 vs Threshold](images/2612c597-ebea-4f71-bfae-2c308577db70.png)
+![F1 vs Threshold](images/result.png)
 
 > ✅ 위 그래프는 다양한 threshold에 따른 F1-score 변화를 보여주며, 최적 threshold 선택의 근거가 됩니다.
 
