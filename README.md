@@ -19,13 +19,6 @@
 - **Test.csv**: 예측용 테스트 데이터
 - **Sample_submission.csv**: 제출 형식 템플릿
 
-| 컬럼명            | 설명                        |
-|------------------|-----------------------------|
-| TSH_Result, T3... | 갑상선 관련 호르몬 수치     |
-| Nodule_Size      | 결절 크기 정보               |
-| Family_Background| 가족력 여부                  |
-| Cancer           | 타겟 변수 (0: 정상, 1: 암)  |
-
 ---
 
 ## 🔧 전처리 및 특성 선택
@@ -38,74 +31,75 @@
 
 ## 🤖 모델링 및 앙상블
 
-### 🎯 XGBoost
-- RandomizedSearchCV로 튜닝 (60회 반복)
-- `scale_pos_weight`로 클래스 불균형 보정
+### 🎯 XGBoost (튜닝 포함)
 
-### 🎯 CatBoost
-- `auto_class_weights='Balanced'` 설정
-- depth, learning_rate, iterations 튜닝
+```python
+from xgboost import XGBClassifier
+from sklearn.model_selection import RandomizedSearchCV
 
-### 🎯 LightGBM
-- 기본 모델 사용 + 클래스 가중치 적용
-
-### 🧩 Soft Voting 앙상블
-- 위 3가지 모델의 예측 확률을 평균 내어 최종 예측
+xgb = XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+param_grid = {
+    'max_depth': [6],
+    'learning_rate': [0.01, 0.1],
+    'n_estimators': [100, 300],
+    'scale_pos_weight': [1, 7.3, 15]
+}
+rs_xgb = RandomizedSearchCV(xgb, param_grid, scoring='f1', n_iter=10, cv=5)
+rs_xgb.fit(X_train, y_train)
+best_xgb = rs_xgb.best_estimator_
+```
 
 ---
 
-## 🎯 Threshold 최적화
+### 🧩 Soft Voting 앙상블
 
-- 다양한 threshold(0.30 ~ 0.70)를 적용하여
-- Validation set에서 **F1-score가 가장 높은 임계값**을 최종 threshold로 설정
+```python
+from sklearn.ensemble import VotingClassifier
+
+voting_model = VotingClassifier(
+    estimators=[('xgb', best_xgb), ('cat', best_cat), ('lgb', lgb_model)],
+    voting='soft'
+)
+voting_model.fit(X_train, y_train)
+```
+
+---
+
+### 🔍 Threshold 튜닝
+
+```python
+from sklearn.metrics import f1_score
+import numpy as np
+
+proba = voting_model.predict_proba(X_val)[:, 1]
+thresholds = np.arange(0.30, 0.71, 0.01)
+f1_scores = [f1_score(y_val, proba > t) for t in thresholds]
+best_thresh = thresholds[np.argmax(f1_scores)]
+```
 
 ---
 
 ## 📈 결과 및 평가
 
-```text
-- 최종 F1-score (검증 세트 기준): 약 0.93
-- Precision, Recall, Confusion Matrix 등 포함
-- ROC Curve 및 F1-score 변화 그래프 시각화
-```
-
-📊 [submit_voting_xgbtuned.csv] 파일로 결과 저장
+- F1-score 기준 최적 threshold 선택
+- confusion matrix, classification report 출력
+- 결과 제출 파일 생성: `submit_voting_xgbtuned.csv`
 
 ---
 
 ## 🛠 사용된 패키지
 
 ```text
-pandas
-scikit-learn
-xgboost
-catboost
-lightgbm
-matplotlib
-numpy
-```
-
----
-
-## 📎 프로젝트 구조
-
-```
-📁 thyroid-cancer-classification
-├── train.csv
-├── test.csv
-├── sample_submission.csv
-├── 01_modeling.py
-├── submit_voting_xgbtuned.csv
-└── README.md
+pandas, scikit-learn, xgboost, catboost, lightgbm, matplotlib, numpy
 ```
 
 ---
 
 ## 📝 프로젝트 회고
 
-- 클래스 불균형 대응 기법(scale_pos_weight, auto_class_weights)의 효과 체감
-- Threshold 직접 튜닝으로 Precision-Recall tradeoff 조절 경험
-- 향후 SMOTE, SHAP feature importance 시각화도 적용해볼 예정
+- 클래스 불균형 대응 전략의 중요성 학습
+- 단일 모델보다 앙상블 + threshold 최적화의 성능 우위 확인
+- 향후 SHAP, SMOTE 추가 적용 예정
 
 ---
 
