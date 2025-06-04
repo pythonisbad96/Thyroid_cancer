@@ -99,7 +99,7 @@ best_thresh = thresholds[np.argmax(f1_scores)]
 
 ### 🎨 F1-score vs Threshold 시각화
 
-![F1 vs Threshold](images/2612c597-ebea-4f71-bfae-2c308577db70.png)
+![F1 vs Threshold](images/result.png)
 
 > 위 그래프는 다양한 threshold에서의 F1-score 변화를 시각화한 것으로, 최적 기준점을 선택하는 데 활용됩니다.
 
